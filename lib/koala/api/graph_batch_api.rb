@@ -72,7 +72,7 @@ module Koala
             batch_op = batch_calls[index]
             index += 1
 
-            if call_result
+            raw = if call_result
               # (see note in regular api method about JSON parsing)
               body = MultiJson.load("[#{call_result['body'].to_s}]")[0]
 
@@ -89,18 +89,20 @@ module Koala
                 end
 
                 # process it if we are given a block to process with
-                batch_op.post_processing ? batch_op.post_processing.call(data) : data
+                #batch_op.post_processing ? batch_op.post_processing.call(data) : data
               else
                 error || APIError.new({"type" => "HTTP #{call_result["code"].to_s}", "message" => "Response body: #{body}"})
               end
             else
               nil
             end
+
+            GraphCollection.evaluate(raw, @original_api).tap { |processed| batch_op.post_processing.call(processed) if batch_op.post_processing }
           end
         end
 
         # turn any results that are pageable into GraphCollections
-        batch_result.inject([]) {|processed_results, raw| processed_results << GraphCollection.evaluate(raw, @original_api)}
+        #batch_result.inject([]) {|processed_results, raw| processed_results << GraphCollection.evaluate(raw, @original_api)}
       end
 
     end
